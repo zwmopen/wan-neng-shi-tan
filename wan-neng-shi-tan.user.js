@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         万能嗅探（Via版）
 // @namespace    zwmopen-via-userscripts
-// @version      0.1.0
+// @version      0.1.1
 // @description  安静发现网页公开的媒体直链，点击打开；也可回到网页播放器继续播放。
 // @match        http://*/*
 // @match        https://*/*
@@ -27,6 +27,7 @@
     var playbackError = null;
     var playbackFallback = null;
     var nextPlayerId = 1;
+    var mediaScanScheduled = false;
 
     function parseHttpUrl(raw) {
         if (!raw || typeof raw !== 'string') return null;
@@ -385,6 +386,21 @@
         if (rootNode.tagName === 'VIDEO' || rootNode.tagName === 'AUDIO') collectMediaElement(rootNode);
     }
 
+    function nodeContainsMedia(node) {
+        if (!node || node.nodeType !== 1) return false;
+        if (node.tagName === 'VIDEO' || node.tagName === 'AUDIO' || node.tagName === 'SOURCE') return true;
+        return !!(node.querySelector && node.querySelector('video,audio,source'));
+    }
+
+    function scheduleMediaScan() {
+        if (mediaScanScheduled) return;
+        mediaScanScheduled = true;
+        window.setTimeout(function () {
+            mediaScanScheduled = false;
+            scanMedia(document);
+        }, 500);
+    }
+
     function scanResourceEntries(entries) {
         var i;
         for (i = 0; entries && i < entries.length; i += 1) {
@@ -413,12 +429,17 @@
                     if (records[i].type === 'attributes') {
                         var target = records[i].target;
                         if (target && (target.tagName === 'VIDEO' || target.tagName === 'AUDIO' || target.tagName === 'SOURCE')) {
-                            scanMedia(target);
+                            scheduleMediaScan();
                         }
                     }
                     else {
                         var j;
-                        for (j = 0; j < records[i].addedNodes.length; j += 1) scanMedia(records[i].addedNodes[j]);
+                        for (j = 0; j < records[i].addedNodes.length; j += 1) {
+                            if (nodeContainsMedia(records[i].addedNodes[j])) {
+                                scheduleMediaScan();
+                                break;
+                            }
+                        }
                     }
                 }
             });
