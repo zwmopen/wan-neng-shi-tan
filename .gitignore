@@ -1,0 +1,14 @@
+# Local editor and operating-system files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# Local test/build output if added later
+node_modules/
+coverage/
+dist/
+*.log
